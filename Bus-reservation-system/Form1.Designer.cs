@@ -90,6 +90,7 @@
             this.search_button.TabIndex = 13;
             this.search_button.Text = "Vyhľadať";
             this.search_button.UseVisualStyleBackColor = true;
+            this.search_button.Click += new System.EventHandler(this.Search_Click);
             // 
             // input_to
             // 
