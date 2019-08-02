@@ -42,32 +42,32 @@ namespace Bus_reservation_system
         public ResultData findPath(int startNode, int indexStartCity, int endNode, int indexFinalCity, LocalTime startTime, int[] nodeIndexes) {
 
             //array of closed nodes through algorithm runtime
-            bool[] closed = new bool[data.Length];
+            bool[] closed = new bool[data.GetLength(0)];
             //array of distances from starting node to others
-            double[] distances = new double[data.Length];
+            double[] distances = new double[data.GetLength(0)];
             //auxiliar data structure for algorithm
             HashSet<int> set = new HashSet<int>();
             //array of predecessors for all nodes in graph
-            int[] predecessors = new int[data.Length];
+            int[] predecessors = new int[data.GetLength(0)];
             //array of lines between all two nodes after path find
-            //int[][] lines = new int[data.length][data.length];
+            //int[,] lines = new int[data.GetLength(0),data.GetLength(0)];
 
             //array of departures for all pairs of nodes
-            LocalTime[,] timeDepartures = new LocalTime[data.Length, data.Length];
+            LocalTime[,] timeDepartures = new LocalTime[data.GetLength(0), data.GetLength(0)];
 
             //INITIALIZE SECTION - START
             set.Add(startNode);
             predecessors[startNode] = -1;
 
             //initialize departure times for all nodes (all nodes have startTime value)
-            for (int i = 0; i < data.Length; i++) {
-                for (int j = 0; j < data.Length; j++) {
+            for (int i = 0; i < data.GetLength(0); i++) {
+                for (int j = 0; j < data.GetLength(0); j++) {
                     timeDepartures[i, j] = startTime;
                 }
             }
 
             //initialize distances to Integer.MAX_VALUE except startNode node
-            for (int i = 0; i < data.Length; i++) {
+            for (int i = 0; i < data.GetLength(0); i++) {
                 if (i != startNode) {
                     distances[i] = int.MaxValue;
                 }
@@ -85,7 +85,7 @@ namespace Bus_reservation_system
                 closed[actualNode] = true;
 
                 //main cycle for all columns in actualNode's row in data
-                for (int i = 0; i < data.Length; i++) {
+                for (int i = 0; i < data.GetLength(0); i++) {
                     if (!data[actualNode,i].isInfDistance) {
                         if (data[actualNode,i].isTransfer) {
                             if (FunctionForTransfer(closed, actualNode, indexFinalCity, i, distances, timeDepartures, nodeIndexes)) {
@@ -160,7 +160,7 @@ namespace Bus_reservation_system
                     distances[i] = distances[actualNode] + duration;
 
                     //set non-closed nodes's timeDeparture to nextTime
-                    for (int l = 0; l < data.Length; l++) {
+                    for (int l = 0; l < data.GetLength(0); l++) {
                         if (!closed[l]) {
                             timeDepartures[i, l] = timeDepartures[actualNode, i].Plus(Period.FromMinutes((long)duration));
                         }
@@ -210,7 +210,7 @@ namespace Bus_reservation_system
                         LocalTime timeArrive = startTime;
                         Duration toMidnight = betweenAdd(parseTime("23:59"), timeArrive, PeriodUnits.Minutes, 1);
 
-                        duration2 = betweenAdd(nextTime, parseTime("00:00"), PeriodUnits.Minutes, toMidnight.Minutes);
+                        duration2 = betweenAdd(nextTime, parseTime("00:00"), PeriodUnits.Minutes, toMidnight.Minutes + toMidnight.Hours*60);
                         newDay = false;
                     }
                     else {
@@ -222,7 +222,7 @@ namespace Bus_reservation_system
                     //wait time in start node when next edge is not transfer
                     double imagDiff = 0;
                     if (nodeIndexes[actualNode] == indexStartCity && actualNode == startNode) {
-                        imagDiff = duration2.Minutes;
+                        imagDiff = duration2.Minutes + duration2.Hours*60;
 
                     }
 
@@ -232,7 +232,7 @@ namespace Bus_reservation_system
 
 
                     //set non-closed nodes's timeDeparture to nextTime
-                    for (int l = 0; l < data.Length; l++) {
+                    for (int l = 0; l < data.GetLength(0); l++) {
                         if (!closed[l]) {
                             timeDepartures[i, l] = timeDepartures[actualNode, i].Plus(Period.FromMinutes((long)duration));
                         }
@@ -259,7 +259,7 @@ namespace Bus_reservation_system
             LocalTime nextTime = data[actualNode,i].times[k];
 
             //find in list of departures in day in actualNode nearest actualTIme
-            while (startTime.CompareTo(nextTime) < 0 && !(startTime.Equals(nextTime))) {
+            while (startTime.CompareTo(nextTime) > 0 && !(startTime.Equals(nextTime))) {
 
                 k++;
                 //if occured new day, start at begin in list and time departure will set to 00:00
@@ -288,7 +288,7 @@ namespace Bus_reservation_system
         private void markMeighbourTransferEdges(int actualNode, int previousNode, int indexFinalCity, LocalTime[,] timeDepartures, int[] nodeIndexes) {
 
             //loop for all neighbours
-            for (int j = 0; j < data.Length; j++) {
+            for (int j = 0; j < data.GetLength(0); j++) {
                 if (nodeIndexes[actualNode] != indexFinalCity) {
                     if ((!data[actualNode,j].isTransfer) && (actualNode != j) && (!data[actualNode,j].isInfDistance)) {
                         //find next immediate time
@@ -299,7 +299,7 @@ namespace Bus_reservation_system
                             LocalTime timeArrive = timeDepartures[previousNode, actualNode];
                             Duration toMidnight = betweenAdd(parseTime("23:59"), timeArrive, PeriodUnits.Minutes, 1);
 
-                            duration = betweenAdd(nextImmediateTime, parseTime("00:00"), PeriodUnits.Minutes, toMidnight.Minutes);
+                            duration = betweenAdd(nextImmediateTime, parseTime("00:00"), PeriodUnits.Minutes, toMidnight.Minutes + toMidnight.Hours*60);
                             newDay = false;
                         }
                         else {
@@ -309,7 +309,7 @@ namespace Bus_reservation_system
                         //initialize for next iteration
                         //--
 
-                        String durationString = String.Format(duration.Hours + ":" + (duration.Minutes - duration.Hours * 60));
+                        String durationString = String.Format(duration.Hours.ToString("00") + ":" + duration.Minutes.ToString("00"));
 
                         //mark edge
                         data[previousNode,actualNode].duration = parseTime(durationString);
@@ -346,13 +346,14 @@ namespace Bus_reservation_system
                 bool atBegin = true;
                 for (int i = 0; i < path.Count() - 1; i++) {
                     if (data[path[i],path[i + 1]].isTransfer && atBegin) {
-                        path.Remove(i);
+                        path.RemoveAt(i);
                         i = -1;
                     }
                     else {
                         atBegin = false;
                     }
                 }
+                //path in graph
                 path.Reverse();
             }
 
